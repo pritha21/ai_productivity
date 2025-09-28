@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Workspace {
+  id        String  @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  users     User[]
+  sources   Source[]
+  items     Item[]
+  topics    Topic[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  workspaceId  String
+  email        String   @unique
+  displayName  String?
+  createdAt    DateTime @default(now())
+  workspace    Workspace @relation(fields: [workspaceId], references: [id])
+}
+
+model Source {
+  id           String    @id @default(cuid())
+  workspaceId  String
+  type         String
+  name         String
+  createdAt    DateTime  @default(now())
+  workspace    Workspace @relation(fields: [workspaceId], references: [id])
+  items        Item[]
+  @@unique([workspaceId, type, name], name: "workspaceId_type_name")
+}
+
+model Item {
+  id           String    @id @default(cuid())
+  workspaceId  String
+  sourceId     String
+  externalId   String    // e.g., Slack ts, Drive fileId, Notion pageId
+  title        String?
+  content      String
+  metadata     String?
+  createdAt    DateTime  @default(now())
+  workspace    Workspace @relation(fields: [workspaceId], references: [id])
+  source       Source    @relation(fields: [sourceId], references: [id])
+  chunks       Chunk[]
+}
+
+model Chunk {
+  id        String  @id @default(cuid())
+  itemId    String
+  index     Int
+  text      String
+  createdAt DateTime @default(now())
+  item      Item    @relation(fields: [itemId], references: [id])
+  topics    TopicMembership[]
+}
+
+model Topic {
+  id           String  @id @default(cuid())
+  workspaceId  String
+  label        String
+  summary      String?
+  createdAt    DateTime @default(now())
+  workspace    Workspace @relation(fields: [workspaceId], references: [id])
+  chunks       TopicMembership[]
+}
+
+model TopicMembership {
+  chunkId String
+  topicId String
+  score   Float
+  chunk   Chunk @relation(fields: [chunkId], references: [id])
+  topic   Topic @relation(fields: [topicId], references: [id])
+  @@id([chunkId, topicId])
+}
